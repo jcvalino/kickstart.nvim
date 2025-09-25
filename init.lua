@@ -141,6 +141,9 @@ vim.o.timeoutlen = 300
 vim.o.splitright = true
 vim.o.splitbelow = true
 
+-- set auto-indent width
+vim.opt.shiftwidth = 2
+
 -- Sets how neovim will display certain whitespace characters in the editor.
 --  See `:help 'list'`
 --  and `:help 'listchars'`
@@ -173,6 +176,58 @@ vim.o.confirm = true
 --  See `:help hlsearch`
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
+-- Toggle bottom terminal
+local term_buf = nil
+local term_win = nil
+
+function _G.toggle_terminal()
+  if term_win and vim.api.nvim_win_is_valid(term_win) then
+    -- If terminal window is open, close it
+    vim.api.nvim_win_close(term_win, true)
+    term_win = nil
+  else
+    -- If not open, create it
+    vim.cmd 'botright 12split'
+    term_win = vim.api.nvim_get_current_win()
+    if not term_buf or not vim.api.nvim_buf_is_valid(term_buf) then
+      vim.cmd 'terminal'
+      term_buf = vim.api.nvim_get_current_buf()
+    else
+      vim.api.nvim_set_current_buf(term_buf)
+    end
+    -- Enter insert mode so you can type right away
+    -- vim.cmd("startinsert")
+  end
+end
+
+-- Terminal toggle
+vim.keymap.set('n', '<leader>t', toggle_terminal, { desc = 'Toggle bottom terminal' })
+
+-- Git diff toggle
+vim.keymap.set('n', '<leader>gd', function()
+  local lib = require 'diffview.lib'
+  if lib.get_current_view() then
+    vim.cmd 'DiffviewClose'
+  else
+    vim.cmd 'DiffviewOpen'
+  end
+end, { desc = 'Git: Toggle Diffview' })
+
+-- Neotree toggle
+vim.keymap.set('n', '<leader>e', ':Neotree toggle<CR>', { desc = 'Toggle File [E]xplorer' })
+
+-- Go to previous buffer
+vim.keymap.set('n', '<leader>gp', '<C-^>', { desc = 'Go to [P]revious buffer' })
+
+-- Make <C-c> behave like <Esc> in block insert
+vim.keymap.set('i', '<C-c>', function()
+  if vim.fn.visualmode() == '\022' then -- \022 = <C-v> (visual block)
+    return '<Esc>'
+  else
+    return '<C-c>'
+  end
+end, { expr = true })
+
 -- Diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 
@@ -185,10 +240,10 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 -- TIP: Disable arrow keys in normal mode
--- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
--- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
--- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
--- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
+vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
+vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
+vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
+vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
 
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
@@ -200,10 +255,10 @@ vim.keymap.set('n', '<C-j>', '<C-w><C-j>', { desc = 'Move focus to the lower win
 vim.keymap.set('n', '<C-k>', '<C-w><C-k>', { desc = 'Move focus to the upper window' })
 
 -- NOTE: Some terminals have colliding keymaps or are not able to send distinct keycodes
--- vim.keymap.set("n", "<C-S-h>", "<C-w>H", { desc = "Move window to the left" })
--- vim.keymap.set("n", "<C-S-l>", "<C-w>L", { desc = "Move window to the right" })
--- vim.keymap.set("n", "<C-S-j>", "<C-w>J", { desc = "Move window to the lower" })
--- vim.keymap.set("n", "<C-S-k>", "<C-w>K", { desc = "Move window to the upper" })
+vim.keymap.set('n', '<C-S-h>', '<C-w>H', { desc = 'Move window to the left' })
+vim.keymap.set('n', '<C-S-l>', '<C-w>L', { desc = 'Move window to the right' })
+vim.keymap.set('n', '<C-S-j>', '<C-w>J', { desc = 'Move window to the lower' })
+vim.keymap.set('n', '<C-S-k>', '<C-w>K', { desc = 'Move window to the upper' })
 
 -- [[ Basic Autocommands ]]
 --  See `:help lua-guide-autocommands`
@@ -752,20 +807,20 @@ require('lazy').setup({
     },
     opts = {
       notify_on_error = false,
-      format_on_save = function(bufnr)
-        -- Disable "format_on_save lsp_fallback" for languages that don't
-        -- have a well standardized coding style. You can add additional
-        -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
-        if disable_filetypes[vim.bo[bufnr].filetype] then
-          return nil
-        else
-          return {
-            timeout_ms = 500,
-            lsp_format = 'fallback',
-          }
-        end
-      end,
+      -- format_on_save = function(bufnr)
+      --   -- Disable "format_on_save lsp_fallback" for languages that don't
+      --   -- have a well standardized coding style. You can add additional
+      --   -- languages here or re-enable it for the disabled ones.
+      --   local disable_filetypes = { c = true, cpp = true }
+      --   if disable_filetypes[vim.bo[bufnr].filetype] then
+      --     return nil
+      --   else
+      --     return {
+      --       timeout_ms = 500,
+      --       lsp_format = 'fallback',
+      --     }
+      --   end
+      -- end,
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
@@ -773,6 +828,27 @@ require('lazy').setup({
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { 'prettier' },
+        typescript = { 'prettier' },
+        javascriptreact = { 'prettier' },
+        typescriptreact = { 'prettier' },
+        prisma = { 'prisma_fmt' },
+        json = { 'prettier' },
+        css = { 'prettier' },
+        html = { 'prettier' },
+        markdown = { 'prettier' },
+        yaml = { 'prettier' },
+      },
+      formatters = {
+        prettier = {
+          command = 'npx', -- use project-local prettier
+          args = { 'prettier', '--stdin-filepath', '$FILENAME' },
+        },
+        prisma_fmt = {
+          command = 'npx',
+          args = { 'prisma', 'format', '--schema', '$FILENAME' },
+          stdin = false,
+        },
       },
     },
   },
@@ -973,18 +1049,21 @@ require('lazy').setup({
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug',
+  require 'kickstart.plugins.debug',
   -- require 'kickstart.plugins.indent_line',
-  -- require 'kickstart.plugins.lint',
-  -- require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.lint',
+  require 'kickstart.plugins.autopairs',
+  require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.lspconfig',
+  require 'kickstart.plugins.cmp',
   -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommend keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
+  { import = 'kickstart.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!

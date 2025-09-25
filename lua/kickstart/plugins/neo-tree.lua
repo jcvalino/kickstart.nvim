@@ -15,9 +15,32 @@ return {
   },
   opts = {
     filesystem = {
+      commands = {
+        copy_file_or_dir = function(state)
+          local node = state.tree:get_node()
+          local path = node:get_id()
+
+          -- escape quotes for AppleScript
+          path = path:gsub('"', '\\"')
+
+          -- tell macOS clipboard to hold this file/folder
+          local script = string.format('osascript -e \'set the clipboard to (POSIX file "%s")\'', path)
+
+          vim.fn.system(script)
+          print('Copied ' .. path .. ' to Finder clipboard')
+        end,
+        open_in_finder = function(state)
+          local node = state.tree:get_node()
+          local path = node:get_id() -- full path of the file/folder
+          -- open containing folder in Finder
+          vim.fn.jobstart({ 'open', '-R', path }, { detach = true })
+        end,
+      },
       window = {
         mappings = {
           ['\\'] = 'close_window',
+          ['gy'] = 'copy_file_or_dir',
+          ['O'] = 'open_in_finder',
         },
       },
     },
